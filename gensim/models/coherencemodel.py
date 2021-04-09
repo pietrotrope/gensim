@@ -441,12 +441,16 @@ class CoherenceModel(interfaces.TransformationABC):
         self._topics = new_topics
 
     def _ensure_elements_are_ids(self, topic):
-        try:
-            return np.array([self.dictionary.token2id[token] for token in topic])
-        except KeyError:  # might be a list of token ids already, but let's verify all in dict
-            topic = (self.dictionary.id2token[_id] for _id in topic)
-            return np.array([self.dictionary.token2id[token] for token in topic])
-
+        tokens = [t for t in topic if t in self.dictionary.token2id]
+        elements_are_tokens = np.array([self.dictionary.token2id[token] for token in tokens])
+        elements_are_ids = np.array([i for i in topic if i in self.dictionary.id2token])
+        if elements_are_tokens.size > elements_are_ids.size:
+            return elements_are_tokens
+        elif elements_are_ids.size > elements_are_tokens.size:
+            return elements_are_ids
+        else:
+            raise Exception("Topic list is not a list of lists of tokens or ids")
+               
     def _update_accumulator(self, new_topics):
         if self._relevant_ids_will_differ(new_topics):
             logger.debug("Wiping cached accumulator since it does not contain all relevant ids.")
